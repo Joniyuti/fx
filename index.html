@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>FX人生シミュレーター 〜 死ぬまでに何を掴むか 〜</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow-x: hidden;
+      background-color: #070b14;
+      color: #f1f5f9;
+      font-family: 'Noto Sans JP', 'Inter', sans-serif;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .panel-glass {
+      background: linear-gradient(180deg, rgba(17, 24, 39, 0.92) 0%, rgba(10, 15, 28, 0.95) 100%);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    }
+
+    .btn-action {
+      transition: transform 0.08s ease, filter 0.12s ease, background-color 0.12s ease, border-color 0.12s ease;
+      touch-action: manipulation;
+    }
+
+    .btn-action:active:not(:disabled) {
+      transform: scale(0.96);
+    }
+
+    .btn-action:disabled {
+      opacity: 0.42;
+      cursor: not-allowed;
+    }
+
+    /* スクロールバー調整 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.45);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  <!-- トップヘッダー：人生時計・寿命・健康・労働意欲・資金・サウンド -->
+  <header class="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 px-3 py-2 sm:px-5">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 via-cyan-400 to-indigo-500 flex items-center justify-center text-slate-950 font-black text-sm shadow">
+          FX
+        </div>
+        <div>
+          <div class="text-xs sm:text-sm font-black tracking-tight text-white leading-tight">
+            FX人生シミュレーター <span class="text-cyan-300 hidden sm:inline">〜 死ぬまでに何を掴むか 〜</span>
+          </div>
+          <div id="date-display" class="text-[11px] text-slate-400 tabular-nums">
+            1年目 春 (Day 1) ・ 残り時間 24h
+          </div>
+        </div>
+      </div>
+
+      <!-- コア指標ピル群 -->
+      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2.5 text-xs">
+        <div class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700/80">
+          <span class="text-slate-400 mr-1">現金</span>
+          <span id="hud-cash" class="font-black text-emerald-400 tabular-nums">¥1,000,000</span>
+        </div>
+
+        <div class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700/80">
+          <span class="text-slate-400 mr-1">借金</span>
+          <span id="hud-debt" class="font-black text-rose-400 tabular-nums">¥0</span>
+        </div>
+
+        <div class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700/80">
+          <span class="text-slate-400 mr-1">寿命</span>
+          <span id="hud-lifespan" class="font-black text-amber-300 tabular-nums">60.0年</span>
+        </div>
+
+        <div class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700/80">
+          <span class="text-slate-400 mr-1">健康</span>
+          <span id="hud-health" class="font-black text-sky-300 tabular-nums">100</span>
+        </div>
+
+        <div class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700/80">
+          <span class="text-slate-400 mr-1">労働意欲</span>
+          <span id="hud-motivation" class="font-black text-fuchsia-300 tabular-nums">65%</span>
+        </div>
+
+        <button id="btn-sound" type="button" class="btn-action px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold cursor-pointer">
+          ♪ 音: ON
+        </button>
+
+        <button id="btn-end-now" type="button" class="btn-action px-2.5 py-1 rounded-lg bg-rose-950/70 hover:bg-rose-900 border border-rose-700/60 text-rose-200 font-bold cursor-pointer">
+          人生を畳む
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインワークスペース -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-2.5 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
+    <!-- 左・中央エリア（7カラム）：FXチャート＆トレード操作＋人生ステータス＆行動ログ -->
+    <div class="lg:col-span-7 flex flex-col gap-3 sm:gap-4">
+      <!-- FXトレードパネル -->
+      <section class="panel-glass rounded-2xl p-3 sm:p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <div class="flex items-center gap-1.5">
+            <button data-pair="USD/JPY" type="button" class="pair-btn btn-action px-2.5 py-1 rounded-lg text-xs font-black bg-cyan-500 text-slate-950 cursor-pointer">
+              USD/JPY
+            </button>
+            <button data-pair="EUR/JPY" type="button" class="pair-btn btn-action px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 cursor-pointer">
+              EUR/JPY
+            </button>
+            <button data-pair="XAU/USD" type="button" class="pair-btn btn-action px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 cursor-pointer">
+              XAU/USD
+            </button>
+          </div>
+
+          <div class="flex items-center gap-3 text-xs tabular-nums">
+            <span id="market-regime" class="px-2 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 font-bold">
+              通常相場
+            </span>
+            <div>
+              <span class="text-slate-400 mr-1">現在レート</span>
+              <span id="current-rate" class="text-base sm:text-lg font-black text-white">152.400</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- リアルタイム・ライフ連動チャートCanvas -->
+        <div class="relative w-full h-52 sm:h-60 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 mb-3">
+          <canvas id="fxChartCanvas" class="w-full h-full block"></canvas>
+          <div class="pointer-events-none absolute top-2 left-2.5 flex flex-wrap items-center gap-2 text-[11px] bg-slate-950/75 px-2.5 py-1 rounded-lg border border-slate-800/90 tabular-nums">
+            <span class="text-slate-400">スプレッド:</span>
+            <span id="hud-spread" class="text-amber-300 font-bold">0.030</span>
+            <span class="text-slate-600">|</span>
+            <span class="text-slate-400">含み損益:</span>
+            <span id="hud-pnl" class="font-black text-slate-200">¥0</span>
+          </div>
+        </div>
+
+        <!-- ポジション＆注文コントロール -->
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+          <div class="sm:col-span-4">
+            <label class="block text-[11px] text-slate-400 mb-1">証拠金（円）</label>
+            <div class="flex gap-1">
+              <input id="input-margin" type="number" min="10000" step="10000" value="100000" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-xs sm:text-sm font-bold text-white tabular-nums focus:outline-none focus:border-cyan-400" />
+              <button id="btn-half-cash" type="button" class="btn-action px-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-slate-300 cursor-pointer">1/2</button>
+              <button id="btn-max-cash" type="button" class="btn-action px-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-slate-300 cursor-pointer">MAX</button>
+            </div>
+          </div>
+
+          <div class="sm:col-span-3">
+            <label class="block text-[11px] text-slate-400 mb-1">レバレッジ</label>
+            <select id="select-leverage" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-2.5 py-2 text-xs sm:text-sm font-bold text-amber-300 focus:outline-none focus:border-amber-400">
+              <option value="1">1倍（安全）</option>
+              <option value="5" selected>5倍（標準）</option>
+              <option value="15">15倍（攻め）</option>
+              <option value="25">25倍（ハイリスク）</option>
+            </select>
+          </div>
+
+          <div class="sm:col-span-5 grid grid-cols-3 gap-1.5">
+            <button id="btn-long" type="button" class="btn-action py-2.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm shadow cursor-pointer">
+              買い (LONG)
+            </button>
+            <button id="btn-short" type="button" class="btn-action py-2.5 px-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs sm:text-sm shadow cursor-pointer">
+              売り (SHORT)
+            </button>
+            <button id="btn-close-pos" type="button" class="btn-action py-2.5 px-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow cursor-pointer" disabled>
+              決済 (CLOSE)
+            </button>
+          </div>
+        </div>
+
+        <!-- 保有ポジション詳細バー -->
+        <div id="position-banner" class="mt-2.5 px-3 py-2 rounded-xl bg-slate-900/90 border border-slate-800 text-xs flex flex-wrap items-center justify-between gap-2 tabular-nums">
+          <span class="text-slate-400">未決済ポジション: <strong class="text-slate-200">なし</strong></span>
+          <span class="text-slate-500">レートが動くと含み損益・寿命・労働意欲に影響します（時間経過ボタンで相場を進行可能）</span>
+        </div>
+      </section>
+
+      <!-- 人生行動・時間経過・労働・医療・精神ステータス -->
+      <section class="panel-glass rounded-2xl p-3 sm:p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h2 class="text-sm sm:text-base font-black text-white flex items-center gap-2">
+            <span>⏳ 人生アクション＆時間進行</span>
+            <span id="illness-badge" class="hidden px-2 py-0.5 rounded-full text-[11px] font-black bg-rose-500/25 border border-rose-400 text-rose-200">
+              病気・怪我中
+            </span>
+          </h2>
+          <div id="job-badge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/15 border border-emerald-400/30 text-emerald-300">
+            現職: コンビニ・事務スタッフ（日給 ¥14,000）
+          </div>
+        </div>
+
+        <!-- ステータスゲージ群 -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3 text-xs">
+          <div class="bg-slate-900/80 rounded-xl p-2.5 border border-slate-800">
+            <div class="flex justify-between mb-1">
+              <span class="text-slate-400">健康度（病気・怪我リスク）</span>
+              <span id="bar-health-text" class="font-bold text-sky-300 tabular-nums">100 / 100</span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+              <div id="bar-health" class="h-full bg-gradient-to-r from-sky-400 to-cyan-300 transition-all duration-150" style="width: 100%"></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-900/80 rounded-xl p-2.5 border border-slate-800">
+            <div class="flex justify-between mb-1">
+              <span class="text-slate-400">労働意欲（30〜85%で勤務可能）</span>
+              <span id="bar-motivation-text" class="font-bold text-fuchsia-300 tabular-nums">65%</span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+              <div id="bar-motivation" class="h-full bg-gradient-to-r from-fuchsia-500 to-pink-400 transition-all duration-150" style="width: 65%"></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-900/80 rounded-xl p-2.5 border border-slate-800">
+            <div class="flex justify-between mb-1">
+              <span class="text-slate-400">ストレス度（高いと病気・怪我）</span>
+              <span id="bar-stress-text" class="font-bold text-amber-300 tabular-nums">15%</span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+              <div id="bar-stress" class="h-full bg-gradient-to-r from-amber-400 to-rose-500 transition-all duration-150" style="width: 15%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 行動ボタン群 -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          <button id="btn-step-time" type="button" class="btn-action p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-left cursor-pointer">
+            <div class="font-black">⏩ 時間を進める (+6h)</div>
+            <div class="text-[10px] text-indigo-100/85">相場変動・寿命消費</div>
+          </button>
+
+          <button id="btn-work" type="button" class="btn-action p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-left cursor-pointer">
+            <div class="font-black">💼 仕事をする (-8h)</div>
+            <div id="work-sub" class="text-[10px] text-emerald-100/85">収入+¥14,000 / 疲労増</div>
+          </button>
+
+          <button id="btn-job-hunt" type="button" class="btn-action p-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-left cursor-pointer">
+            <div class="font-black">📄 就職活動 (-6h)</div>
+            <div class="text-[10px] text-cyan-100/85">失職中・転職時に挑戦</div>
+          </button>
+
+          <button id="btn-rest-hospital" type="button" class="btn-action p-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-left cursor-pointer">
+            <div class="font-black">🏥 休養・治療 (-8h)</div>
+            <div id="heal-sub" class="text-[10px] text-amber-100/85">医療費¥15,000 / 回復</div>
+          </button>
+        </div>
+      </section>
+
+      <!-- 人生ログ -->
+      <section class="panel-glass rounded-2xl p-3 sm:p-4">
+        <div class="text-xs font-black text-slate-300 mb-2">📜 人生の出来事ログ</div>
+        <div id="event-log" class="h-32 overflow-y-auto space-y-1.5 text-xs pr-1">
+          <div class="text-slate-400">初期資金 ¥1,000,000 と 60年の寿命を手に、FX人生が始まりました。</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 右エリア（5カラム）：ショップ（物・寿命アイテム）・所持品一覧（動的売却）・借金システム -->
+    <div class="lg:col-span-5 flex flex-col gap-3 sm:gap-4">
+      <!-- タブ切替（ショップ / 所持品・売却 / 借金） -->
+      <section class="panel-glass rounded-2xl p-3 sm:p-4 flex-1 flex flex-col">
+        <div class="grid grid-cols-3 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-slate-800 mb-3 text-xs font-black">
+          <button id="tab-shop" type="button" class="tab-btn py-2 rounded-lg bg-cyan-500 text-slate-950 cursor-pointer">
+            🛍️ ショップ
+          </button>
+          <button id="tab-inventory" type="button" class="tab-btn py-2 rounded-lg text-slate-300 hover:text-white cursor-pointer">
+            🎒 所持品 (<span id="inv-count">0</span>)
+          </button>
+          <button id="tab-debt" type="button" class="tab-btn py-2 rounded-lg text-slate-300 hover:text-white cursor-pointer">
+            💳 借金・融資
+          </button>
+        </div>
+
+        <!-- タブ1：ショップ -->
+        <div id="pane-shop" class="space-y-2.5 overflow-y-auto max-h-[560px] pr-1">
+          <div class="flex flex-wrap gap-1 mb-2" id="shop-category-filters">
+            <button data-cat="ALL" type="button" class="cat-btn px-2 py-1 rounded-md text-[11px] font-bold bg-slate-700 text-white cursor-pointer">すべて</button>
+            <button data-cat="寿命・健康" type="button" class="cat-btn px-2 py-1 rounded-md text-[11px] font-bold bg-slate-800 text-slate-300 cursor-pointer">寿命・健康</button>
+            <button data-cat="乗り物" type="button" class="cat-btn px-2 py-1 rounded-md text-[11px] font-bold bg-slate-800 text-slate-300 cursor-pointer">車・船・機</button>
+            <button data-cat="不動産" type="button" class="cat-btn px-2 py-1 rounded-md text-[11px] font-bold bg-slate-800 text-slate-300 cursor-pointer">家・豪邸</button>
+            <button data-cat="趣味・宝飾" type="button" class="cat-btn px-2 py-1 rounded-md text-[11px] font-bold bg-slate-800 text-slate-300 cursor-pointer">PC・カード・宝</button>
+          </div>
+          <div id="shop-list" class="space-y-2"></div>
+        </div>
+
+        <!-- タブ2：所持品一覧＆動的売値売却 -->
+        <div id="pane-inventory" class="hidden space-y-2.5 overflow-y-auto max-h-[560px] pr-1">
+          <div class="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] text-slate-300 leading-relaxed">
+            売値は基本で買値より安くなりますが、<strong>時間経過や相場サイクル（好景気・コレクター熱・円安/インフレ）で変動</strong>します。資金難のときの現金化や高値売却のタイミングを見極めましょう。
+          </div>
+          <div id="inventory-list" class="space-y-2"></div>
+        </div>
+
+        <!-- タブ3：借金・融資システム -->
+        <div id="pane-debt" class="hidden space-y-3 overflow-y-auto max-h-[560px] pr-1 text-xs">
+          <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1.5 tabular-nums">
+            <div class="flex justify-between">
+              <span class="text-slate-400">現在の借金残高</span>
+              <span id="debt-panel-total" class="font-black text-rose-400">¥0</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">信用スコア</span>
+              <span id="debt-panel-credit" class="font-black text-cyan-300">70 / 100</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">未払い利息・遅延ペナルティ</span>
+              <span id="debt-panel-overdue" class="font-bold text-amber-300">なし</span>
+            </div>
+          </div>
+
+          <!-- 借り入れプラン -->
+          <div class="space-y-2">
+            <div class="font-black text-slate-200">資金を借りる</div>
+            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-2">
+              <div>
+                <div class="font-bold text-sky-300">🏦 都市銀行フリーローン (+¥300,000)</div>
+                <div class="text-[11px] text-slate-400">低金利（1日あたり約1.2%）・信用影響少・返済期限あり</div>
+              </div>
+              <button id="btn-borrow-bank" type="button" class="btn-action px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black whitespace-nowrap cursor-pointer">
+                借入
+              </button>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-900 border border-rose-900/50 flex items-center justify-between gap-2">
+              <div>
+                <div class="font-bold text-rose-300">⚡ 闇金・ハイリスク融資 (+¥1,000,000)</div>
+                <div class="text-[11px] text-slate-400">超高金利（1日あたり約5.5%）・ストレス大幅増・延滞で取り立て</div>
+              </div>
+              <button id="btn-borrow-shark" type="button" class="btn-action px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black whitespace-nowrap cursor-pointer">
+                借入
+              </button>
+            </div>
+          </div>
+
+          <!-- 返済アクション -->
+          <div class="space-y-2">
+            <div class="font-black text-slate-200">借金を返済する</div>
+            <div class="grid grid-cols-2 gap-2">
+              <button id="btn-repay-100k" type="button" class="btn-action py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black cursor-pointer">
+                ¥100,000 返済
+              </button>
+              <button id="btn-repay-all" type="button" class="btn-action py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-black cursor-pointer">
+                一括全額返済
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- 人生終了（寿命到達 / 引退）サマリーモーダル -->
+  <div id="modal-summary" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="max-w-lg w-full rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-cyan-400/35 p-5 sm:p-6 shadow-2xl">
+      <div class="inline-block px-3 py-1 rounded-full text-xs font-black bg-cyan-500/15 border border-cyan-400/30 text-cyan-200 mb-2">
+        LIFE SUMMARY
+      </div>
+      <h2 id="summary-title" class="text-2xl sm:text-3xl font-black text-white mb-1">人生の幕が閉じました</h2>
+      <p id="summary-subtitle" class="text-xs sm:text-sm text-slate-400 mb-4"></p>
+
+      <div class="bg-slate-950/80 rounded-xl p-4 border border-slate-800 space-y-2 text-xs sm:text-sm tabular-nums mb-4">
+        <div class="flex justify-between">
+          <span class="text-slate-400">最終現金</span>
+          <span id="sum-cash" class="font-bold text-emerald-400">¥0</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">所持品時価総額</span>
+          <span id="sum-items" class="font-bold text-cyan-300">¥0</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">残存借金</span>
+          <span id="sum-debt" class="font-bold text-rose-400">¥0</span>
+        </div>
+        <div class="border-t border-slate-800 pt-2 flex justify-between text-sm sm:text-base">
+          <span class="font-black text-white">純資産（最終到達スコア）</span>
+          <span id="sum-networth" class="font-black text-amber-300">¥0</span>
+        </div>
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-400">歴代ベストスコア</span>
+          <span id="sum-best" class="font-bold text-fuchsia-300">¥0</span>
+        </div>
+      </div>
+
+      <div class="mb-5">
+        <div class="text-xs font-black text-slate-300 mb-1.5">獲得した主な所持品・人生ハイライト</div>
+        <div id="sum-highlights" class="max-h-32 overflow-y-auto text-xs text-slate-300 bg-slate-950/60 rounded-xl p-3 border border-slate-800/80 space-y-1"></div>
+      </div>
+
+      <button id="btn-restart-life" type="button" class="btn-action w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 via-cyan-400 to-indigo-500 text-slate-950 font-black text-sm sm:text-base shadow-lg cursor-pointer">
+        もう一度人生をやり直す
+      </button>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      // =========================================================================
+      // 1. サウンドエンジン（Web Audio API による効果音合成・外部音声なし）
+      // =========================================================================
+      class SoundFX {
+        constructor() {
+          this.ctx = null;
+          this.muted = false;
+        }
+
+        unlock() {
+          try {
+            if (!this.ctx) {
+              const AudioCtx = window.AudioContext || window.webkitAudioContext;
+              if (AudioCtx) this.ctx = new AudioCtx();
+            }
+            if (this.ctx && this.ctx.state === 'suspended') {
+              this.ctx.resume().catch(() => {});
+            }
+          } catch (_) {}
+        }
+
+        toggleMute() {
+          this.muted = !this.muted;
+          return this.muted;
+        }
+
+        play(kind) {
+          if (this.muted) return;
+          this.unlock();
+          if (!this.ctx) return;
+
+          try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            if (kind === 'tradeOpen') {
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(520, now);
+              osc.frequency.exponentialRampToValueAtTime(780, now + 0.09);
+              gain.gain.setValueAtTime(0.09, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+              osc.connect(gain).connect(this.ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.1);
+            } else if (kind === 'win') {
+              const notes = [587.33, 739.99, 880, 1174.66];
+              notes.forEach((f, idx) => {
+                const o = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                o.type = 'triangle';
+                const t = now + idx * 0.055;
+                o.frequency.setValueAtTime(f, t);
+                g.gain.setValueAtTime(0.1, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+                o.connect(g).connect(this.ctx.destination);
+                o.start(t);
+                o.stop(t + 0.14);
+              });
+            } else if (kind === 'loss') {
+              osc.type = 'sawtooth';
+              osc.frequency.setValueAtTime(240, now);
+              osc.frequency.exponentialRampToValueAtTime(95, now + 0.24);
+              gain.gain.setValueAtTime(0.11, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+              osc.connect(gain).connect(this.ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.25);
+            } else if (kind === 'buy') {
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(660, now);
+              osc.frequency.exponentialRampToValueAtTime(990, now + 0.08);
+              gain.gain.setValueAtTime(0.09, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+              osc.connect(gain).connect(this.ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.09);
+            } else if (kind === 'tick') {
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(390, now);
+              gain.gain.setValueAtTime(0.04, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+              osc.connect(gain).connect(this.ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.045);
+            }
+          } catch (_) {}
+        }
+      }
+
+      // =========================================================================
+      // 2. カタログ定義（車・家・豪邸・飛行機・船・PC・カード・フィギュア・宝石・寿命/健康）
+      // =========================================================================
+      const SHOP_CATALOG = [
+        { id: 'elixir_tea', name: '仙桃の秘茶', category: '寿命・健康', icon: '🍵', price: 180000, lifeBonus: 2.5, healthBonus: 20, desc: '寿命+2.5年・健康+20。長生きの第一歩。' },
+        { id: 'longevity_pill', name: '不老の霊薬カプセル', category: '寿命・健康', icon: '💊', price: 850000, lifeBonus: 7.0, healthBonus: 35, desc: '寿命+7.0年・健康+35。相場ストレスも和らぐ。' },
+        { id: 'cryo_pod', name: 'バイオ・リジュベネーション槽', category: '寿命・健康', icon: '🧬', price: 4500000, lifeBonus: 18.0, healthBonus: 50, desc: '寿命+18.0年・健康全快に近い超延命テック。' },
+
+        { id: 'compact_car', name: '軽・コンパクトカー', category: '乗り物', icon: '🚗', price: 650000, stressRelief: 6, desc: '街乗りに便利な愛車。ストレス少し軽減。' },
+        { id: 'sports_car', name: 'ターボ・スポーツカー', category: '乗り物', icon: '🏎️', price: 3200000, stressRelief: 12, desc: 'エンジン音が心地よいスポーツカー。' },
+        { id: 'yacht', name: 'ラグジュアリー・クルーザー', category: '乗り物', icon: '🛥️', price: 14500000, stressRelief: 18, desc: '海を駆ける豪華クルーザー。資産価値も存在感も大。' },
+        { id: 'private_jet', name: 'プライベート・ジェット機', category: '乗り物', icon: '✈️', price: 48000000, stressRelief: 25, desc: '空を自由に飛ぶ究極の乗り物。' },
+
+        { id: 'studio_apt', name: '都心ワンルームマンション', category: '不動産', icon: '🏢', price: 4800000, stressRelief: 8, desc: '自分の城となる住まい。' },
+        { id: 'grand_mansion', name: '丘の上の豪邸', category: '不動産', icon: '🏰', price: 36000000, stressRelief: 22, desc: '庭園とプールを備えた大豪邸。' },
+
+        { id: 'trading_pc', name: 'トリプルモニター・トレードPC', category: '趣味・宝飾', icon: '💻', price: 240000, stressRelief: 5, desc: 'チャート分析が捗るハイスペックPC。' },
+        { id: 'rare_card', name: '限定ホログラム・トレーディングカード', category: '趣味・宝飾', icon: '🃏', price: 120000, stressRelief: 4, desc: 'コレクター需要で売値が大きく跳ねることも。' },
+        { id: 'limited_figure', name: '原型師サイン入り限定フィギュア', category: '趣味・宝飾', icon: '🎎', price: 95000, stressRelief: 4, desc: 'プレミア相場が変動する造形アイテム。' },
+        { id: 'star_diamond', name: 'ブルー・スター・ダイヤモンド', category: '趣味・宝飾', icon: '💎', price: 7800000, stressRelief: 14, desc: '輝きを放つ希少宝石。緊急時の換金資産にも。' },
+      ];
+
+      const JOBS = [
+        { title: 'コンビニ・事務スタッフ', wage: 14000, stressGain: 8, motivationDelta: -4 },
+        { title: 'Webリサーチャー・営業職', wage: 26000, stressGain: 12, motivationDelta: -5 },
+        { title: 'クオンツ・アナリスト職', wage: 48000, stressGain: 16, motivationDelta: -6 },
+      ];
+
+      const BEST_KEY = 'fx_life_sim_best_v1';
+
+      // =========================================================================
+      // 3. ゲーム状態・通貨ペア初期化
+      // =========================================================================
+      const sfx = new SoundFX();
+
+      function createInitialPairs() {
+        return {
+          'USD/JPY': {
+            price: 152.4,
+            spread: 0.03,
+            pipScale: 100000,
+            decimals: 3,
+            history: [152.1, 152.25, 152.05, 152.32, 152.4],
+          },
+          'EUR/JPY': {
+            price: 165.8,
+            spread: 0.04,
+            pipScale: 90000,
+            decimals: 3,
+            history: [165.4, 165.9, 165.65, 166.0, 165.8],
+          },
+          'XAU/USD': {
+            price: 2680.0,
+            spread: 0.6,
+            pipScale: 4500,
+            decimals: 2,
+            history: [2668.0, 2675.5, 2671.0, 2684.0, 2680.0],
+          },
+        };
+      }
+
+      let state = createFreshState();
+
+      function createFreshState() {
+        let best = 0;
+        try {
+          const v = parseInt(localStorage.getItem(BEST_KEY), 10);
+          if (Number.isFinite(v)) best = v;
+        } catch (_) {}
+
+        return {
+          year: 1,
+          day: 1,
+          hour: 6, // 0〜23時
+          lifespanYears: 60.0,
+          cash: 1000000,
+          debt: 0,
+          debtDailyRate: 0.012,
+          debtOverdueDays: 0,
+          creditScore: 72,
+          health: 100,
+          motivation: 65, // 0〜100%（30〜85%で労働可能）
+          stress: 15,     // 0〜100%
+          illness: null,  // null | '過労による体調不良' | '相場ストレス胃痛' | '転倒・ケガ'
+          jobIndex: 0,    // 0..2 or -1（失職中）
+          activePair: 'USD/JPY',
+          pairs: createInitialPairs(),
+          position: null, // { pair, side: 'LONG'|'SHORT', margin, leverage, entryPrice, units }
+          regime: '通常相場', // '通常相場' | '高ボラ急騰急落' | 'コレクター好況'
+          regimeTimer: 12,
+          inventory: [],  // { uid, itemId, buyPrice, boughtDay }
+          highlights: ['初期資金 ¥1,000,000 で人生スタート'],
+          bestScore: best,
+          ended: false,
+          selectedCategory: 'ALL',
+        };
+      }
+
+      // =========================================================================
+      // 4. ログ・通知・計算ヘルパー
+      // =========================================================================
+      function addLog(text, tone = 'normal') {
+        const el = document.getElementById('event-log');
+        const line = document.createElement('div');
+        const colorClass =
+          tone === 'good'
+            ? 'text-emerald-300'
+            : tone === 'bad'
+            ? 'text-rose-300'
+            : tone === 'warn'
+            ? 'text-amber-300'
+            : 'text-slate-300';
+        line.className = `${colorClass} leading-snug`;
+        line.textContent = `[${state.year}年目 Day${state.day} ${String(state.hour).padStart(2, '0')}時] ${text}`;
+        el.prepend(line);
+        if (state.highlights.length < 30 && (tone === 'good' || tone === 'warn' || tone === 'bad')) {
+          state.highlights.push(`${state.year}年目 Day${state.day}: ${text}`);
+        }
+      }
+
+      function formatYen(n) {
+        const sign = n < 0 ? '-' : '';
+        return `${sign}¥${Math.round(Math.abs(n)).toLocaleString()}`;
+      }
+
+      // 時間経過と相場サイクルに応じた所持品の動的売値倍率（基本は買値の0.68倍前後、変動で0.45〜1.15倍）
+      function getResaleMultiplier(item, entry) {
+        const catalogItem = SHOP_CATALOG.find((c) => c.id === item.itemId);
+        const ageFactor = Math.sin((state.day + entry.boughtDay * 0.7) * 0.55) * 0.14;
+        const regimeBonus =
+          state.regime === 'コレクター好況' && catalogItem && catalogItem.category === '趣味・宝飾'
+            ? 0.24
+            : state.regime === '高ボラ急騰急落'
+            ? 0.08
+            : 0;
+        const jitter = Math.cos(state.day * 1.15 + entry.boughtDay) * 0.07;
+        const mult = 0.68 + ageFactor + regimeBonus + jitter;
+        return Math.max(0.42, Math.min(1.22, mult));
+      }
+
+      function getResalePrice(entry) {
+        return Math.round(entry.buyPrice * getResaleMultiplier(entry, entry));
+      }
+
+      function getUnrealizedPnL() {
+        const pos = state.position;
+        if (!pos) return 0;
+        const p = state.pairs[pos.pair];
+        const diff = pos.side === 'LONG' ? p.price - pos.entryPrice : pos.entryPrice - p.price;
+        return Math.round(diff * pos.units);
+      }
+
+      function getInventoryMarketValue() {
+        return state.inventory.reduce((sum, entry) => sum + getResalePrice(entry), 0);
+      }
+
+      function getNetWorth() {
+        return state.cash + getUnrealizedPnL() + getInventoryMarketValue() - state.debt;
+      }
+
+      // =========================================================================
+      // 5. 相場シミュレーション＆時間経過・寿命・健康・労働意欲
+      // =========================================================================
+      function tickMarketAndTime(hours) {
+        if (state.ended) return;
+
+        // 市場レジーム切り替え
+        state.regimeTimer -= hours;
+        if (state.regimeTimer <= 0) {
+          const r = Math.random();
+          if (r < 0.25) {
+            state.regime = '高ボラ急騰急落';
+            state.regimeTimer = 10 + Math.random() * 10;
+            addLog('相場が「高ボラ急騰急落」フェーズに突入！値幅とリスクが拡大。', 'warn');
+          } else if (r < 0.48) {
+            state.regime = 'コレクター好況';
+            state.regimeTimer = 12 + Math.random() * 10;
+            addLog('コレクター市場が「好況」！所持品（カード・フィギュア・宝飾など）の売値が上昇中。', 'good');
+          } else {
+            state.regime = '通常相場';
+            state.regimeTimer = 14 + Math.random() * 12;
+          }
+        }
+
+        // 通貨ペアのレート変動
+        const volMult = state.regime === '高ボラ急騰急落' ? 2.2 : 1.0;
+        Object.keys(state.pairs).forEach((code) => {
+          const pair = state.pairs[code];
+          const stepCount = Math.max(1, Math.min(8, Math.round(hours * 1.5)));
+          for (let s = 0; s < stepCount; s++) {
+            const baseVol = code === 'XAU/USD' ? 9.5 : 0.32;
+            const drift = (Math.random() - 0.495) * baseVol * volMult * Math.sqrt(hours / stepCount);
+            const nextPrice = Math.max(code === 'XAU/USD' ? 1200 : 80, pair.price + drift);
+            pair.price = Number(nextPrice.toFixed(pair.decimals));
+            pair.history.push(pair.price);
+            if (pair.history.length > 60) pair.history.shift();
+          }
+        });
+
+        // 寿命＆カレンダー進行
+        const daysElapsed = hours / 24;
+        const illnessLifePenalty = state.illness ? 1.45 : 1.0;
+        const stressLifePenalty = state.stress > 75 ? 1.2 : 1.0;
+        const consumedLife = daysElapsed * 0.16 * illnessLifePenalty * stressLifePenalty;
+        state.lifespanYears = Math.max(0, Number((state.lifespanYears - consumedLife).toFixed(2)));
+
+        state.hour += hours;
+        while (state.hour >= 24) {
+          state.hour -= 24;
+          state.day += 1;
+          onNewDay();
+          if (state.ended) return;
+        }
+
+        // ストレス自然減衰（ごく緩やか）＆病気・怪我発生判定
+        state.stress = Math.max(0, Math.min(100, state.stress - hours * 0.35));
+        if (!state.illness && hours >= 4) {
+          const riskChance = (state.stress / 100) * 0.11 + (state.health < 45 ? 0.08 : 0.015);
+          if (Math.random() < riskChance) {
+            const kinds = ['過労による体調不良', '相場ストレス胃痛', '転倒・ケガ'];
+            state.illness = kinds[Math.floor(Math.random() * kinds.length)];
+            state.health = Math.max(15, state.health - 18);
+            state.stress = Math.min(100, state.stress + 12);
+            sfx.play('loss');
+            addLog(`「${state.illness}」を発症！健康が低下し、休養・治療が必要です。`, 'bad');
+          }
+        } else if (state.illness) {
+          state.health = Math.max(5, state.health - hours * 0.8);
+        }
+
+        // 未決済ポジションのロスカット判定
+        checkStopOut();
+
+        // 寿命切れチェック
+        if (state.lifespanYears <= 0 && !state.ended) {
+          endLife('寿命を迎えました');
+        }
+
+        sfx.play('tick');
+        renderAll();
+      }
+
+      function onNewDay() {
+        if (state.day > 30) {
+          state.day = 1;
+          state.year += 1;
+          addLog(`祝！${state.year}年目に突入しました。`, 'good');
+        }
+
+        // 借金利子＆延滞チェック
+        if (state.debt > 0) {
+          const interest = Math.round(state.debt * state.debtDailyRate);
+          state.debt += interest;
+          if (state.cash < interest) {
+            state.debtOverdueDays += 1;
+            state.creditScore = Math.max(0, state.creditScore - 6);
+            state.stress = Math.min(100, state.stress + 10);
+            addLog(`借金利子 ${formatYen(interest)} が加算され、資金不足で信用スコアが低下しました（延滞${state.debtOverdueDays}日）。`, 'bad');
+          } else {
+            state.debtOverdueDays = Math.max(0, state.debtOverdueDays - 1);
+            addLog(`借金日次利息 ${formatYen(interest)} が残高に加算されました。`, 'warn');
+          }
+        }
+      }
+
+      function checkStopOut() {
+        const pos = state.position;
+        if (!pos) return;
+        const pnl = getUnrealizedPnL();
+        // 証拠金の80%以上の含み損でロスカット（強制決済）
+        if (pnl <= -pos.margin * 0.8) {
+          const lostAmount = Math.min(pos.margin, Math.max(0, -pnl));
+          state.position = null;
+          state.motivation = Math.max(5, state.motivation - 28);
+          state.stress = Math.min(100, state.stress + 25);
+          checkMotivationJobLoss('FX大負け（ロスカット）');
+          sfx.play('loss');
+          addLog(`ロスカット発動！${pos.pair} ${pos.side} で約 ${formatYen(lostAmount)} の損失が確定し、労働意欲が大きく低下しました。`, 'bad');
+        }
+      }
+
+      // FXの大勝ち・大負けで労働意欲が極端に振れ、労働適性レンジ（30〜85%）を外れると失職する
+      function applyTradeMotivationSwing(pnl, margin) {
+        if (margin <= 0) return;
+        const ratio = pnl / margin;
+        if (ratio >= 0.45) {
+          // 大勝ち：ハイになりすぎて労働意欲が跳ね上がる（上限突破で「働く気が起きない」失職リスク）
+          const delta = Math.min(35, Math.round(ratio * 24));
+          state.motivation = Math.min(100, state.motivation + delta);
+          state.stress = Math.max(0, state.stress - 8);
+          checkMotivationJobLoss('FX大勝ちで労働意欲が限界突破');
+        } else if (ratio <= -0.35) {
+          // 大負け：ショックで労働意欲が急落（下限割れで「気力が出ず働けない」失職リスク）
+          const delta = Math.min(35, Math.round(Math.abs(ratio) * 26));
+          state.motivation = Math.max(0, state.motivation - delta);
+          state.stress = Math.min(100, state.stress + 18);
+          checkMotivationJobLoss('FX大負けで労働意欲が喪失');
+        } else {
+          state.motivation = Math.max(0, Math.min(100, state.motivation + Math.round(ratio * 10)));
+        }
+      }
+
+      function checkMotivationJobLoss(reason) {
+        if (state.jobIndex >= 0 && (state.motivation > 85 || state.motivation < 30)) {
+          const lostJob = JOBS[state.jobIndex];
+          state.jobIndex = -1;
+          addLog(`【失職】${reason}（労働意欲 ${state.motivation}%）のため「${lostJob.title}」を失職！給与収入がストップしました。就職活動が必要です。`, 'bad');
+        }
+      }
+
+      // =========================================================================
+      // 6. トレード・労働・就職・休養・ショップ・売却・借金アクション
+      // =========================================================================
+      function openPosition(side) {
+        if (state.ended) return;
+        sfx.unlock();
+
+        if (state.position) {
+          addLog('すでに未決済ポジションがあります。先に決済（CLOSE）してください。', 'warn');
+          return;
+        }
+
+        const marginInput = document.getElementById('input-margin');
+        const margin = Math.floor(Number(marginInput.value) || 0);
+        const leverage = Number(document.getElementById('select-leverage').value) || 5;
+
+        if (margin < 10000) {
+          addLog('証拠金は ¥10,000 以上を指定してください。', 'warn');
+          return;
+        }
+        if (margin > state.cash) {
+          addLog('現金が不足しています。所持品の売却や借入を検討してください。', 'warn');
+          return;
+        }
+
+        const pairObj = state.pairs[state.activePair];
+        const halfSpread = pairObj.spread * 0.5;
+        const entryPrice =
+          side === 'LONG'
+            ? Number((pairObj.price + halfSpread).toFixed(pairObj.decimals))
+            : Number((pairObj.price - halfSpread).toFixed(pairObj.decimals));
+
+        const notional = margin * leverage;
+        const units = notional / entryPrice;
+
+        state.cash -= margin;
+        state.position = {
+          pair: state.activePair,
+          side,
+          margin,
+          leverage,
+          entryPrice,
+          units,
+        };
+
+        sfx.play('tradeOpen');
+        addLog(`${state.activePair} を ${side}（${leverage}倍・証拠金 ${formatYen(margin)}）でエントリー（約定 ${entryPrice}）。`, 'normal');
+        tickMarketAndTime(4);
+      }
+
+      function closePosition() {
+        if (state.ended || !state.position) return;
+        sfx.unlock();
+
+        const pos = state.position;
+        const pnl = getUnrealizedPnL();
+        const returned = Math.max(0, pos.margin + pnl);
+
+        state.cash += returned;
+        state.position = null;
+
+        applyTradeMotivationSwing(pnl, pos.margin);
+
+        if (pnl >= 0) {
+          sfx.play('win');
+          addLog(`${pos.pair} ${pos.side} 決済！損益 ${formatYen(pnl)}（労働意欲 ${state.motivation}%）。`, 'good');
+        } else {
+          sfx.play('loss');
+          addLog(`${pos.pair} ${pos.side} 決済…損益 ${formatYen(pnl)}（労働意欲 ${state.motivation}%）。`, 'bad');
+        }
+
+        renderAll();
+      }
+
+      function doWork() {
+        if (state.ended) return;
+        sfx.unlock();
+
+        if (state.jobIndex < 0) {
+          addLog('現在「無職（失職中）」です。先に【就職活動】で仕事を見つけてください。', 'warn');
+          return;
+        }
+        if (state.motivation > 85 || state.motivation < 30) {
+          checkMotivationJobLoss('労働意欲が適性範囲外');
+          renderAll();
+          return;
+        }
+
+        const job = JOBS[state.jobIndex];
+        state.cash += job.wage;
+        state.stress = Math.min(100, state.stress + job.stressGain);
+        state.motivation = Math.max(0, Math.min(100, state.motivation + job.motivationDelta));
+        addLog(`「${job.title}」として勤務し、給与 ${formatYen(job.wage)} を獲得しました。`, 'good');
+        tickMarketAndTime(8);
+      }
+
+      function doJobHunt() {
+        if (state.ended) return;
+        sfx.unlock();
+
+        // 労働意欲を仕事ができる中間レンジ（45〜70%）へ整えつつ就職・転職を狙う
+        if (state.motivation > 85) {
+          state.motivation = 68;
+        } else if (state.motivation < 30) {
+          state.motivation = 48;
+        }
+
+        const roll = Math.random();
+        if (roll < 0.78) {
+          const nextIdx =
+            state.jobIndex < 0
+              ? 0
+              : Math.min(JOBS.length - 1, state.jobIndex + (Math.random() < 0.55 ? 1 : 0));
+          state.jobIndex = nextIdx;
+          addLog(`就職活動成功！「${JOBS[nextIdx].title}（給与 ${formatYen(JOBS[nextIdx].wage)}）」に就きました。`, 'good');
+        } else {
+          state.stress = Math.min(100, state.stress + 6);
+          addLog('今回の就職活動は採用に至らず…。時間を置いて再挑戦しましょう。', 'warn');
+        }
+
+        tickMarketAndTime(6);
+      }
+
+      function doRestOrHeal() {
+        if (state.ended) return;
+        sfx.unlock();
+
+        const medicalFee = state.illness ? 25000 : 12000;
+        if (state.cash < medicalFee) {
+          addLog(`休養・医療費 ${formatYen(medicalFee)} が足りません。所持品売却や借入を検討してください。`, 'warn');
+          return;
+        }
+
+        state.cash -= medicalFee;
+        state.health = Math.min(100, state.health + (state.illness ? 35 : 22));
+        state.stress = Math.max(0, state.stress - 24);
+        if (state.illness && state.health >= 55) {
+          addLog(`治療と休養により「${state.illness}」が回復しました！（費用 ${formatYen(medicalFee)}）`, 'good');
+          state.illness = null;
+        } else {
+          addLog(`休養・ケアを実施（費用 ${formatYen(medicalFee)}）。健康とストレスが改善しました。`, 'good');
+        }
+
+        tickMarketAndTime(8);
+      }
+
+      function buyShopItem(itemId) {
+        if (state.ended) return;
+        sfx.unlock();
+
+        const item = SHOP_CATALOG.find((c) => c.id === itemId);
+        if (!item) return;
+
+        if (state.cash < item.price) {
+          addLog(`「${item.name}」を買うには現金が足りません。`, 'warn');
+          return;
+        }
+
+        state.cash -= item.price;
+        state.inventory.push({
+          uid: `${item.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          itemId: item.id,
+          buyPrice: item.price,
+          boughtDay: state.day + (state.year - 1) * 30,
+        });
+
+        if (item.lifeBonus) {
+          state.lifespanYears = Number((state.lifespanYears + item.lifeBonus).toFixed(2));
+        }
+        if (item.healthBonus) {
+          state.health = Math.min(100, state.health + item.healthBonus);
+        }
+        if (item.stressRelief) {
+          state.stress = Math.max(0, state.stress - item.stressRelief);
+        }
+
+        sfx.play('buy');
+        addLog(`${item.icon}「${item.name}」を ${formatYen(item.price)} で購入しました！`, 'good');
+        renderAll();
+      }
+
+      function sellInventoryItem(uid) {
+        if (state.ended) return;
+        sfx.unlock();
+
+        const idx = state.inventory.findIndex((e) => e.uid === uid);
+        if (idx === -1) return;
+
+        const entry = state.inventory[idx];
+        const item = SHOP_CATALOG.find((c) => c.id === entry.itemId);
+        const resale = getResalePrice(entry);
+
+        state.inventory.splice(idx, 1);
+        state.cash += resale;
+        sfx.play('buy');
+        addLog(`所持品「${item ? item.name : entry.itemId}」を ${formatYen(resale)} で売却しました。`, 'warn');
+        renderAll();
+      }
+
+      function borrowMoney(kind) {
+        if (state.ended) return;
+        sfx.unlock();
+
+        const isShark = kind === 'shark';
+        const amount = isShark ? 1000000 : 300000;
+        const maxDebt = isShark ? 6000000 : 2500000;
+
+        if (!isShark && state.creditScore < 35) {
+          addLog('信用スコアが低いため、都市銀行ローンの審査に通りません。', 'bad');
+          return;
+        }
+        if (state.debt + amount > maxDebt) {
+          addLog(`借入限度額（${formatYen(maxDebt)}）に達しています。`, 'warn');
+          return;
+        }
+
+        state.cash += amount;
+        state.debt += amount;
+        state.debtDailyRate = isShark ? Math.max(state.debtDailyRate, 0.055) : Math.max(state.debtDailyRate, 0.012);
+        if (isShark) {
+          state.stress = Math.min(100, state.stress + 22);
+          state.creditScore = Math.max(0, state.creditScore - 15);
+          sfx.play('loss');
+          addLog(`⚡ 闇金融資で ${formatYen(amount)} を借入！高金利と強いストレスが襲いかかります。`, 'bad');
+        } else {
+          state.creditScore = Math.max(0, state.creditScore - 4);
+          sfx.play('tradeOpen');
+          addLog(`🏦 都市銀行から ${formatYen(amount)} を借り入れました。`, 'warn');
+        }
+
+        renderAll();
+      }
+
+      function repayDebt(amountOrAll) {
+        if (state.ended || state.debt <= 0) return;
+        sfx.unlock();
+
+        const target = amountOrAll === 'ALL' ? state.debt : Math.min(state.debt, amountOrAll);
+        const pay = Math.min(state.cash, target);
+        if (pay <= 0) {
+          addLog('返済するための現金がありません。', 'warn');
+          return;
+        }
+
+        state.cash -= pay;
+        state.debt -= pay;
+        state.creditScore = Math.min(100, state.creditScore + 3);
+        if (state.debt === 0) {
+          state.debtDailyRate = 0.012;
+          state.debtOverdueDays = 0;
+        }
+        sfx.play('win');
+        addLog(`借金を ${formatYen(pay)} 返済しました（残債 ${formatYen(state.debt)}）。`, 'good');
+        renderAll();
+      }
+
+      function endLife(reason) {
+        if (state.ended) return;
+        state.ended = true;
+
+        // 未決済ポジションがあれば現在値で精算
+        if (state.position) {
+          const pnl = getUnrealizedPnL();
+          state.cash = Math.max(0, state.cash + state.position.margin + pnl);
+          state.position = null;
+        }
+
+        const netWorth = getNetWorth();
+        if (netWorth > state.bestScore) {
+          state.bestScore = netWorth;
+          try {
+            localStorage.setItem(BEST_KEY, String(state.bestScore));
+          } catch (_) {}
+        }
+
+        document.getElementById('summary-title').textContent = reason;
+        document.getElementById('summary-subtitle').textContent =
+          `${state.year}年目 Day${state.day} ・ 残存寿命 ${state.lifespanYears.toFixed(1)}年`;
+        document.getElementById('sum-cash').textContent = formatYen(state.cash);
+        document.getElementById('sum-items').textContent = formatYen(getInventoryMarketValue());
+        document.getElementById('sum-debt').textContent = formatYen(-state.debt);
+        document.getElementById('sum-networth').textContent = formatYen(netWorth);
+        document.getElementById('sum-best').textContent = formatYen(state.bestScore);
+
+        const hlEl = document.getElementById('sum-highlights');
+        hlEl.innerHTML = '';
+        if (state.inventory.length > 0) {
+          const names = state.inventory.map((e) => {
+            const it = SHOP_CATALOG.find((c) => c.id === e.itemId);
+            return `${it ? it.icon + it.name : e.itemId}（時価 ${formatYen(getResalePrice(e))}）`;
+          });
+          const p1 = document.createElement('div');
+          p1.className = 'font-bold text-cyan-200';
+          p1.textContent = `所持品（${state.inventory.length}点）: ${names.join(' / ')}`;
+          hlEl.appendChild(p1);
+        } else {
+          const pEmpty = document.createElement('div');
+          pEmpty.className = 'text-slate-400';
+          pEmpty.textContent = '最期まで所持品なし（キャッシュ＆トレード勝負）でした。';
+          hlEl.appendChild(pEmpty);
+        }
+
+        state.highlights.slice(-5).forEach((h) => {
+          const row = document.createElement('div');
+          row.textContent = `• ${h}`;
+          hlEl.appendChild(row);
+        });
+
+        document.getElementById('modal-summary').classList.remove('hidden');
+        renderAll();
+      }
+
+      // =========================================================================
+      // 7. チャート描画＆UIレンダリング
+      // =========================================================================
+      function drawChart() {
+        const chartCanvas = document.getElementById('fxChartCanvas');
+        const rect = chartCanvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        chartCanvas.width = Math.floor(rect.width * dpr);
+        chartCanvas.height = Math.floor(rect.height * dpr);
+
+        const cctx = chartCanvas.getContext('2d');
+        cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const w = rect.width;
+        const h = rect.height;
+        const pair = state.pairs[state.activePair];
+        const hist = pair.history;
+
+        cctx.fillStyle = '#040812';
+        cctx.fillRect(0, 0, w, h);
+
+        // グリッド線
+        cctx.strokeStyle = 'rgba(148, 163, 184, 0.1)';
+        cctx.lineWidth = 1;
+        for (let r = 1; r <= 4; r++) {
+          const gy = (h / 5) * r;
+          cctx.beginPath();
+          cctx.moveTo(0, gy);
+          cctx.lineTo(w, gy);
+          cctx.stroke();
+        }
+
+        if (hist.length < 2) return;
+        let minP = Math.min(...hist);
+        let maxP = Math.max(...hist);
+        if (state.position && state.position.pair === state.activePair) {
+          minP = Math.min(minP, state.position.entryPrice);
+          maxP = Math.max(maxP, state.position.entryPrice);
+        }
+        const pad = Math.max((maxP - minP) * 0.2, pair.spread * 4);
+        minP -= pad;
+        maxP += pad;
+
+        const toY = (val) => {
+          const ratio = (val - minP) / Math.max(0.0001, maxP - minP);
+          return h - 18 - ratio * (h - 36);
+        };
+
+        // エントリーライン表示
+        if (state.position && state.position.pair === state.activePair) {
+          const ey = toY(state.position.entryPrice);
+          cctx.save();
+          cctx.strokeStyle = state.position.side === 'LONG' ? '#34d399' : '#fb7185';
+          cctx.setLineDash([5, 4]);
+          cctx.beginPath();
+          cctx.moveTo(0, ey);
+          cctx.lineTo(w, ey);
+          cctx.stroke();
+          cctx.restore();
+        }
+
+        // 折れ線＆グラデーション塗りつぶし
+        const grad = cctx.createLinearGradient(0, 0, 0, h);
+        grad.addColorStop(0, 'rgba(34, 211, 238, 0.28)');
+        grad.addColorStop(1, 'rgba(34, 211, 238, 0.0)');
+
+        cctx.beginPath();
+        hist.forEach((val, idx) => {
+          const x = (idx / (hist.length - 1)) * (w - 24) + 12;
+          const y = toY(val);
+          if (idx === 0) cctx.moveTo(x, y);
+          else cctx.lineTo(x, y);
+        });
+        cctx.strokeStyle = '#22d3ee';
+        cctx.lineWidth = 2.4;
+        cctx.stroke();
+
+        cctx.lineTo(w - 12, h);
+        cctx.lineTo(12, h);
+        cctx.closePath();
+        cctx.fillStyle = grad;
+        cctx.fill();
+      }
+
+      function renderAll() {
+        document.getElementById('date-display').textContent =
+          `${state.year}年目 Day${state.day} ・ 時刻 ${String(state.hour).padStart(2, '0')}:00`;
+        document.getElementById('hud-cash').textContent = formatYen(state.cash);
+        document.getElementById('hud-debt').textContent = formatYen(state.debt);
+        document.getElementById('hud-lifespan').textContent = `${state.lifespanYears.toFixed(1)}年`;
+        document.getElementById('hud-health').textContent = `${Math.round(state.health)}`;
+        document.getElementById('hud-motivation').textContent = `${Math.round(state.motivation)}%`;
+
+        const pair = state.pairs[state.activePair];
+        document.getElementById('current-rate').textContent = pair.price.toFixed(pair.decimals);
+        document.getElementById('hud-spread').textContent = pair.spread.toFixed(pair.decimals);
+        document.getElementById('market-regime').textContent = state.regime;
+
+        const pnl = getUnrealizedPnL();
+        const pnlEl = document.getElementById('hud-pnl');
+        pnlEl.textContent = formatYen(pnl);
+        pnlEl.className = `font-black ${pnl > 0 ? 'text-emerald-400' : pnl < 0 ? 'text-rose-400' : 'text-slate-200'}`;
+
+        const posBanner = document.getElementById('position-banner');
+        const closeBtn = document.getElementById('btn-close-pos');
+        if (state.position) {
+          closeBtn.disabled = false;
+          posBanner.innerHTML = `
+            <div>
+              <span class="px-2 py-0.5 rounded font-black text-[11px] ${
+                state.position.side === 'LONG' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
+              }">${state.position.side}</span>
+              <strong class="ml-1.5 text-white">${state.position.pair}</strong>
+              <span class="text-slate-400 ml-2">建値 ${state.position.entryPrice} / ${state.position.leverage}倍 / 証拠金 ${formatYen(state.position.margin)}</span>
+            </div>
+            <div class="font-black ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+              評価損益: ${formatYen(pnl)}
+            </div>
+          `;
+        } else {
+          closeBtn.disabled = true;
+          posBanner.innerHTML = `
+            <span class="text-slate-400">未決済ポジション: <strong class="text-slate-200">なし</strong></span>
+            <span class="text-slate-500">純資産目安: ${formatYen(getNetWorth())}</span>
+          `;
+        }
+
+        // ステータスバー更新
+        document.getElementById('bar-health-text').textContent = `${Math.round(state.health)} / 100`;
+        document.getElementById('bar-health').style.width = `${Math.max(0, Math.min(100, state.health))}%`;
+
+        document.getElementById('bar-motivation-text').textContent = `${Math.round(state.motivation)}%`;
+        document.getElementById('bar-motivation').style.width = `${Math.max(0, Math.min(100, state.motivation))}%`;
+
+        document.getElementById('bar-stress-text').textContent = `${Math.round(state.stress)}%`;
+        document.getElementById('bar-stress').style.width = `${Math.max(0, Math.min(100, state.stress))}%`;
+
+        const illBadge = document.getElementById('illness-badge');
+        if (state.illness) {
+          illBadge.textContent = state.illness;
+          illBadge.classList.remove('hidden');
+        } else {
+          illBadge.classList.add('hidden');
+        }
+
+        const jobBadge = document.getElementById('job-badge');
+        const workBtn = document.getElementById('btn-work');
+        if (state.jobIndex >= 0) {
+          const j = JOBS[state.jobIndex];
+          jobBadge.textContent = `現職: ${j.title}（給与 ${formatYen(j.wage)}）`;
+          jobBadge.className = 'px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/15 border border-emerald-400/30 text-emerald-300';
+          workBtn.disabled = state.ended;
+          document.getElementById('work-sub').textContent = `収入+${formatYen(j.wage)} / ストレス+${j.stressGain}`;
+        } else {
+          jobBadge.textContent = '現在: 無職（失職中・就職活動が必要）';
+          jobBadge.className = 'px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/20 border border-rose-400/40 text-rose-200';
+          workBtn.disabled = true;
+          document.getElementById('work-sub').textContent = '失職中のため勤務不可';
+        }
+
+        const healFee = state.illness ? 25000 : 12000;
+        document.getElementById('heal-sub').textContent = `医療費${formatYen(healFee)} / 回復`;
+
+        // 所持品件数＆リスト
+        document.getElementById('inv-count').textContent = String(state.inventory.length);
+        renderShopList();
+        renderInventoryList();
+        renderDebtPanel();
+        drawChart();
+      }
+
+      function renderShopList() {
+        const listEl = document.getElementById('shop-list');
+        listEl.innerHTML = '';
+
+        const filtered = SHOP_CATALOG.filter((item) =>
+          state.selectedCategory === 'ALL' ? true : item.category === state.selectedCategory
+        );
+
+        filtered.forEach((item) => {
+          const card = document.createElement('div');
+          card.className = 'p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-2.5';
+
+          const info = document.createElement('div');
+          info.innerHTML = `
+            <div class="text-xs font-black text-white">${item.icon} ${item.name} <span class="text-[10px] text-cyan-300 font-bold ml-1">[${item.category}]</span></div>
+            <div class="text-[11px] text-slate-400 leading-snug">${item.desc}</div>
+            <div class="text-xs font-black text-amber-300 mt-0.5 tabular-nums">${formatYen(item.price)}</div>
+          `;
+
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.disabled = state.ended || state.cash < item.price;
+          btn.className = 'btn-action px-3 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs whitespace-nowrap cursor-pointer';
+          btn.textContent = '購入';
+          btn.addEventListener('click', () => buyShopItem(item.id));
+
+          card.appendChild(info);
+          card.appendChild(btn);
+          listEl.appendChild(card);
+        });
+      }
+
+      function renderInventoryList() {
+        const listEl = document.getElementById('inventory-list');
+        listEl.innerHTML = '';
+
+        if (state.inventory.length === 0) {
+          listEl.innerHTML = '<div class="text-xs text-slate-400 text-center py-8">まだ所持品はありません。ショップで購入してみましょう。</div>';
+          return;
+        }
+
+        state.inventory.forEach((entry) => {
+          const item = SHOP_CATALOG.find((c) => c.id === entry.itemId);
+          const resale = getResalePrice(entry);
+          const multPct = Math.round((resale / Math.max(1, entry.buyPrice)) * 100);
+
+          const row = document.createElement('div');
+          row.className = 'p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-2';
+
+          row.innerHTML = `
+            <div class="text-xs">
+              <div class="font-black text-white">${item ? item.icon + ' ' + item.name : entry.itemId}</div>
+              <div class="text-[11px] text-slate-400 tabular-nums">買値 ${formatYen(entry.buyPrice)} → 現在売値 <strong class="text-emerald-300">${formatYen(resale)}</strong> (${multPct}%)</div>
+            </div>
+          `;
+
+          const sellBtn = document.createElement('button');
+          sellBtn.type = 'button';
+          sellBtn.disabled = state.ended;
+          sellBtn.className = 'btn-action px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs whitespace-nowrap cursor-pointer';
+          sellBtn.textContent = '売却';
+          sellBtn.addEventListener('click', () => sellInventoryItem(entry.uid));
+
+          row.appendChild(sellBtn);
+          listEl.appendChild(row);
+        });
+      }
+
+      function renderDebtPanel() {
+        document.getElementById('debt-panel-total').textContent = formatYen(state.debt);
+        document.getElementById('debt-panel-credit').textContent = `${state.creditScore} / 100`;
+        document.getElementById('debt-panel-overdue').textContent =
+          state.debtOverdueDays > 0 ? `延滞 ${state.debtOverdueDays}日（金利 ${(state.debtDailyRate * 100).toFixed(1)}%/日）` : `正常（金利 ${(state.debtDailyRate * 100).toFixed(1)}%/日）`;
+
+        document.getElementById('btn-repay-100k').disabled = state.ended || state.debt <= 0 || state.cash <= 0;
+        document.getElementById('btn-repay-all').disabled = state.ended || state.debt <= 0 || state.cash <= 0;
+      }
+
+      // =========================================================================
+      // 8. イベントリスナー設定
+      // =========================================================================
+      document.querySelectorAll('.pair-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          sfx.unlock();
+          state.activePair = btn.dataset.pair;
+          document.querySelectorAll('.pair-btn').forEach((b) => {
+            const active = b.dataset.pair === state.activePair;
+            b.className = active
+              ? 'pair-btn btn-action px-2.5 py-1 rounded-lg text-xs font-black bg-cyan-500 text-slate-950 cursor-pointer'
+              : 'pair-btn btn-action px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 cursor-pointer';
+          });
+          renderAll();
+        });
+      });
+
+      document.getElementById('btn-half-cash').addEventListener('click', () => {
+        document.getElementById('input-margin').value = Math.max(10000, Math.floor(state.cash * 0.5 / 10000) * 10000);
+      });
+
+      document.getElementById('btn-max-cash').addEventListener('click', () => {
+        document.getElementById('input-margin').value = Math.max(0, Math.floor(state.cash / 10000) * 10000);
+      });
+
+      document.getElementById('btn-long').addEventListener('click', () => openPosition('LONG'));
+      document.getElementById('btn-short').addEventListener('click', () => openPosition('SHORT'));
+      document.getElementById('btn-close-pos').addEventListener('click', closePosition);
+
+      document.getElementById('btn-step-time').addEventListener('click', () => {
+        sfx.unlock();
+        tickMarketAndTime(6);
+      });
+      document.getElementById('btn-work').addEventListener('click', doWork);
+      document.getElementById('btn-job-hunt').addEventListener('click', doJobHunt);
+      document.getElementById('btn-rest-hospital').addEventListener('click', doRestOrHeal);
+
+      // タブ切替
+      const tabButtons = {
+        shop: document.getElementById('tab-shop'),
+        inventory: document.getElementById('tab-inventory'),
+        debt: document.getElementById('tab-debt'),
+      };
+      const tabPanes = {
+        shop: document.getElementById('pane-shop'),
+        inventory: document.getElementById('pane-inventory'),
+        debt: document.getElementById('pane-debt'),
+      };
+
+      function switchRightTab(key) {
+        Object.keys(tabButtons).forEach((k) => {
+          const active = k === key;
+          tabButtons[k].className = active
+            ? 'tab-btn py-2 rounded-lg bg-cyan-500 text-slate-950 cursor-pointer'
+            : 'tab-btn py-2 rounded-lg text-slate-300 hover:text-white cursor-pointer';
+          tabPanes[k].classList.toggle('hidden', !active);
+        });
+        renderAll();
+      }
+
+      tabButtons.shop.addEventListener('click', () => switchRightTab('shop'));
+      tabButtons.inventory.addEventListener('click', () => switchRightTab('inventory'));
+      tabButtons.debt.addEventListener('click', () => switchRightTab('debt'));
+
+      document.querySelectorAll('.cat-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.selectedCategory = btn.dataset.cat;
+          document.querySelectorAll('.cat-btn').forEach((b) => {
+            const active = b.dataset.cat === state.selectedCategory;
+            b.className = active
+              ? 'cat-btn px-2 py-1 rounded-md text-[11px] font-bold bg-slate-700 text-white cursor-pointer'
+              : 'cat-btn px-2 py-1 rounded-md text-[11px] font-bold bg-slate-800 text-slate-300 cursor-pointer';
+          });
+          renderShopList();
+        });
+      });
+
+      document.getElementById('btn-borrow-bank').addEventListener('click', () => borrowMoney('bank'));
+      document.getElementById('btn-borrow-shark').addEventListener('click', () => borrowMoney('shark'));
+      document.getElementById('btn-repay-100k').addEventListener('click', () => repayDebt(100000));
+      document.getElementById('btn-repay-all').addEventListener('click', () => repayDebt('ALL'));
+
+      document.getElementById('btn-sound').addEventListener('click', () => {
+        const muted = sfx.toggleMute();
+        document.getElementById('btn-sound').textContent = muted ? '♪ 音: OFF' : '♪ 音: ON';
+      });
+
+      document.getElementById('btn-end-now').addEventListener('click', () => {
+        sfx.unlock();
+        endLife('自分の意志で人生を畳みました');
+      });
+
+      document.getElementById('btn-restart-life').addEventListener('click', () => {
+        sfx.unlock();
+        state = createFreshState();
+        document.getElementById('event-log').innerHTML =
+          '<div class="text-slate-400">初期資金 ¥1,000,000 と 60年の寿命を手に、新しいFX人生が始まりました。</div>';
+        document.getElementById('modal-summary').classList.add('hidden');
+        renderAll();
+      });
+
+      window.addEventListener('resize', drawChart);
+
+      // =========================================================================
+      // 9. 初期化＆ゆるやかなリアルタイム相場呼吸ループ
+      // =========================================================================
+      renderAll();
+
+      setInterval(() => {
+        if (state.ended) return;
+        // 放置中もごく小さなマイクロ値動きとチャート描画更新を行う
+        Object.keys(state.pairs).forEach((code) => {
+          const pair = state.pairs[code];
+          const jitter = (Math.random() - 0.5) * (code === 'XAU/USD' ? 2.4 : 0.08);
+          pair.price = Number(Math.max(code === 'XAU/USD' ? 1200 : 80, pair.price + jitter).toFixed(pair.decimals));
+          pair.history[pair.history.length - 1] = pair.price;
+        });
+        drawChart();
+        if (state.position) {
+          const pnl = getUnrealizedPnL();
+          const pnlEl = document.getElementById('hud-pnl');
+          pnlEl.textContent = formatYen(pnl);
+          pnlEl.className = `font-black ${pnl > 0 ? 'text-emerald-400' : pnl < 0 ? 'text-rose-400' : 'text-slate-200'}`;
+        }
+      }, 1400);
+    })();
+  </script>
+</body>
+</html>
